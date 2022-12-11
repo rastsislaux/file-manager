@@ -12,6 +12,7 @@
 #include <vector>
 #include <cstring>
 #include <iostream>
+#include <algorithm>
 
 class fs {
 public:
@@ -137,6 +138,53 @@ public:
         }
 
         in.close();
+    }
+
+    void add_file(file f) {
+        if (file_exists(f.name)) {
+            throw fs_error("file exists");
+        }
+        this->files.emplace_back(f);
+    }
+
+    void rm_file(const std::string& filename) {
+        erase_if(files, [filename](const file& f) {
+            return f.name == filename;
+        });
+    }
+
+    file get_file_by_name(const std::string& name) {
+        auto it = std::find_if(files.begin(), files.end(), [name](file f) {
+            return f.name == name;
+        });
+        if (it == files.end()) {
+            throw fs_error("file not found");
+        }
+        return *it;
+    }
+
+    void cp_file(const std::string& src_name, const std::string& trg_name) {
+        auto f = file{get_file_by_name(src_name)};
+        f.name = trg_name;
+        add_file(f);
+    }
+
+    void mv_file(const std::string& old_name, const std::string& new_name) {
+        cp_file(old_name, new_name);
+        rm_file(old_name);
+    }
+
+    bool file_exists(const std::string& filename) {
+        return std::ranges::any_of(files.begin(), files.end(), [filename](const file& f) {
+            return f.name == filename;
+        });
+    }
+
+    void set_content(const std::string& filename, const std::string& content) {
+        auto f = get_file_by_name(filename);
+        f.content = std::vector<char>(content.begin(), content.end());
+        rm_file(filename);
+        add_file(f);
     }
 
     static fs create(std::string image_path) {
